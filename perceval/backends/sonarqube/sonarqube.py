@@ -53,7 +53,9 @@ MAX_RETRIES = 5
 # For the moment static but should be either parameter, either remove
 # list parameter
 TARGET_METRIC_FIELDS = [
-    "accessors", "new_technical_debt",
+    "accessors", "new_technical_debt"]
+
+DEBUG = ''',
     "blocker_violations", "new_it_conditions_to_cover",
     "bugs", "burned_budget", "business_value",
     "class_complexity_distribution", "classes,code_smells",
@@ -91,7 +93,7 @@ TARGET_METRIC_FIELDS = [
     "uncovered_conditions", "new_it_uncovered_conditions", "new_uncovered_conditions", "uncovered_lines",
     "new_it_uncovered_lines", "new_uncovered_lines", "test_data", "test_execution_time", "test_errors", "test_failures",
     "tests", "test_success_density", "vulnerabilities", "wont_fix_issues"]
-
+'''
 
 METRIC_KEYS = "metricKeys"
 
@@ -121,7 +123,7 @@ class Sonar(Backend):
         super().__init__(origin, tag=tag, archive=archive)
         self.base_url = base_url
         self.component = component
-        self.client = None
+        self.client = SonarClient(component, base_url=base_url, archive=archive)
 
     def fetch(self, category=CATEGORY, from_date=DEFAULT_DATETIME):
         """Fetch the metrics from the component.
@@ -260,7 +262,7 @@ class SonarClient(HttpClient):
 
         response = super().fetch(self.base_url, payload=payload)
 
-        return response.text
+        return response.text + '}' # sloppy fix
 
 
 class SonarCommand(BackendCommand):
