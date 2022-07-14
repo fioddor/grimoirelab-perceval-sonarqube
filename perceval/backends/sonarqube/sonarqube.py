@@ -112,7 +112,7 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.0.1'
+    version = '0.0.2'
 
     CATEGORIES = [CATEGORY]
 
@@ -154,7 +154,13 @@ class Sonar(Backend):
 
         :returns: a generator of items
         """
-        from_date = kwargs['from_date']
+        if not (category in self.CATEGORIES):
+            raise NotImplementedError
+
+        try:
+            from_date = kwargs['from_date']
+        except KeyError as ke:
+            from_date = DEFAULT_DATETIME
 
         nmetrics = 0
         component_metrics_raw = self.client.component_metrics(from_date=from_date)
