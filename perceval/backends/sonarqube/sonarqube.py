@@ -19,10 +19,13 @@
 # Authors:
 #     Assad Montasser <assad.montasser@ow2.org>
 #     Valerio Cosentino <valcos@bitergia.com>
+#     Igor Zubiaurre <izubiaurre@bitergia.com>
 #
 
+import configparser                   # common usage.
 import json
 import logging
+import os                             # for read_file().
 
 from grimoirelab_toolkit.datetime import (datetime_to_utc,
                                           datetime_utcnow)
@@ -35,6 +38,7 @@ from ...backend import (Backend,
 from ...client import HttpClient
 from ...utils import DEFAULT_DATETIME
 
+CONFIGURATION_FILE = 'perceval/backends/sonarqube/sonarqube.cfg'
 CATEGORY = "metrics"
 
 SONAR_URL = "https://sonarcloud.io/"
@@ -52,52 +56,24 @@ MAX_RETRIES = 5
 
 # For the moment static but should be either parameter, either remove
 # list parameter
-TARGET_METRIC_FIELDS = [
-    "accessors", "new_technical_debt"]
 
-DEBUG = ''',
-    "blocker_violations", "new_it_conditions_to_cover",
-    "bugs", "burned_budget", "business_value",
-    "class_complexity_distribution", "classes,code_smells",
-    "cognitive_complexity", "commented_out_code_lines",
-    "comment_lines", "comment_lines_data", "comment_lines_density",
-    "class_complexity", "file_complexity","function_complexity",
-    "complexity_in_classes", "complexity_in_functions",
-    "branch_coverage", "new_it_branch_coverage", "new_branch_coverage",
-    "conditions_by_line", "conditions_to_cover",
-    "new_conditions_to_cover", "confirmed_issues", "coverage",
-    "new_it_coverage", "coverage_line_hits_data",
-    "new_coverage", "covered_conditions_by_line", "critical_violations", "complexity", "last_commit_date",
-    "directories", "duplicated_blocks", "new_duplicated_blocks", "duplicated_files", "duplicated_lines",
-    "duplicated_lines_density", "new_duplicated_lines", "new_duplicated_lines_density", "duplications_data",
-    "effort_to_reach_maintainability_rating_a", "executable_lines_data", "false_positive_issues",
-    "file_complexity_distribution", "files", "function_complexity_distribution", "functions", "generated_lines",
-    "generated_ncloc", "info_violations", "violations", "it_conditions_to_cover", "it_branch_coverage",
-    "it_conditions_by_line", "it_coverage", "it_coverage_line_hits_data", "it_covered_conditions_by_line",
-    "it_line_coverage", "it_lines_to_cover", "it_uncovered_conditions", "it_uncovered_lines", "line_coverage",
-    "new_it_line_coverage", "new_line_coverage", "lines", "ncloc", "ncloc_language_distribution", "lines_to_cover",
-    "new_it_lines_to_cover", "new_lines_to_cover", "sqale_rating", "new_maintainability_rating", "major_violations",
-    "minor_violations", "ncloc_data", "new_blocker_violations", "new_bugs", "new_code_smells",
-    "new_critical_violations", "new_info_violations", "new_violations", "new_lines", "new_major_violations",
-    "new_minor_violations", "new_vulnerabilities", "open_issues", "overall_conditions_to_cover",
-    "new_overall_conditions_to_cover", "overall_branch_coverage", "new_overall_branch_coverage",
-    "overall_conditions_by_line", "overall_coverage", "overall_coverage_line_hits_data", "new_overall_coverage",
-    "overall_covered_conditions_by_line", "overall_line_coverage", "new_overall_line_coverage",
-    "overall_lines_to_cover", "new_overall_lines_to_cover", "overall_uncovered_conditions",
-    "new_overall_uncovered_conditions", "overall_uncovered_lines", "new_overall_uncovered_lines", "quality_profiles",
-    "projects", "public_api", "public_documented_api_density", "public_undocumented_api", "quality_gate_details",
-    "alert_status", "reliability_rating", "new_reliability_rating", "reliability_remediation_effort",
-    "new_reliability_remediation_effort", "reopened_issues", "security_rating", "new_security_rating",
-    "security_remediation_effort", "new_security_remediation_effort", "skipped_tests", "sonarjava_feedback",
-    "development_cost", "statements", "team_size", "sqale_index", "sqale_debt_ratio", "new_sqale_debt_ratio",
-    "uncovered_conditions", "new_it_uncovered_conditions", "new_uncovered_conditions", "uncovered_lines",
-    "new_it_uncovered_lines", "new_uncovered_lines", "test_data", "test_execution_time", "test_errors", "test_failures",
-    "tests", "test_success_density", "vulnerabilities", "wont_fix_issues"]
-'''
 
 METRIC_KEYS = "metricKeys"
 
 logger = logging.getLogger(__name__)
+
+def read_file(filename, mode='r'):
+    '''Taken from test_gitlab.
+
+    Pending: 1. remove (import instead)  when integrated with perceval.
+             2. ask for it to be moved to a common place.
+    '''
+    with open(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), filename), mode) as f:
+        content = f.read()
+    return content
+
+
 
 
 class Sonar(Backend):
@@ -112,7 +88,7 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.0.2'
+    version = '0.0.3'
 
     CATEGORIES = [CATEGORY]
 
@@ -262,6 +238,11 @@ class SonarClient(HttpClient):
 
         :returns: a generator of metrics
         """
+        # read config file:
+        config = configparser.RawConfigParser()
+        config.read( CONFIGURATION_FILE )
+        TARGET_METRIC_FIELDS = config.get( 'sonarqube' , 'TARGET_METRIC_FIELDS' ).split(',')
+
         payload = {
             'metricKeys': ','.join(TARGET_METRIC_FIELDS)
         }
