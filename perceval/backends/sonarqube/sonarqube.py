@@ -39,10 +39,9 @@ from ...client import HttpClient
 from ...utils import DEFAULT_DATETIME
 
 CONFIGURATION_FILE = 'perceval/backends/sonarqube/sonarqube.cfg'
-CATEGORY = "metrics"
+DEFAULT_CATEGORY = 'measures'
 
 SONAR_URL = "https://sonarcloud.io/"
-SONAR_API_URL = "api/measures/component?component="
 
 # Range before sleeping until rate limit reset
 MIN_RATE_LIMIT = 10
@@ -56,9 +55,6 @@ MAX_RETRIES = 5
 
 # For the moment static but should be either parameter, either remove
 # list parameter
-
-
-METRIC_KEYS = "metricKeys"
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +76,7 @@ class Sonar(Backend):
     """Sonarqube backend for Perceval.
 
     This class allows to fetch data from Sonarqube.
+    See specs commented at parent class.
 
     :param component: Sonar component (ie project)
     :param base_url: Sonar URL in enterprise edition case;
@@ -88,36 +85,41 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.0.3'
+    version = '0.1.0'
 
-    CATEGORIES = [CATEGORY]
+    CATEGORIES = ('metric', 'measures')
 
-    def __init__(self, component=None, base_url=None, tag=None, archive=None):
-        origin = base_url if base_url else SONAR_URL
-        origin = urijoin(origin, SONAR_API_URL) + component
+    def __init__(self, component=None, base_url=SONAR_URL, tag=None, archive=None):
+        origin = urijoin(base_url, 'api/')
 
         super().__init__(origin, tag=tag, archive=archive)
         self.base_url = base_url
         self.component = component
         self.client = SonarClient(component, base_url=base_url, archive=archive)
 
-    def fetch(self, category=CATEGORY, from_date=DEFAULT_DATETIME):
+    def fetch(self, **kwargs):
         """Fetch the metrics from the component.
 
         The method retrieves, from a Sonarqube instance, the metrics
         updated since the given date.
 
-        :param category: the category of items to fetch
-        :param from_date: obtain issues updated since this date
+        :param kwargs: backend arguments
 
         :returns: a generator of metrics
         """
-        if not from_date:
+        try:
+            from_date = kwargs['from_date']
+        except KeyError as ke:
             from_date = DEFAULT_DATETIME
-
         from_date = datetime_to_utc(from_date)
+        kwargs['from_date'] = from_date
 
-        kwargs = {'from_date': from_date}
+        try:
+            category = kwargs['category']
+            del kwargs['category']
+        except KeyError as ke:
+            category = DEFAULT_CATEGORY
+
         items = super().fetch(category, **kwargs)
 
         return items
@@ -130,16 +132,37 @@ class Sonar(Backend):
 
         :returns: a generator of items
         """
-        if not (category in self.CATEGORIES):
+        if category == 'metric':
+            return self._fetch_metrics(**kwargs)
+        elif category == 'measures':
+            return self._fetch_measures(**kwargs)
+        else:
             raise NotImplementedError
 
+    def _fetch_metrics(self, **kwargs):
+        """Fetch enabled metric keys"""
+
+        nmetrics = 0
+        metrics_raw = self.client.metrics_configured_on_server()
+
+        metrics = json.loads(metrics_raw)['metrics']
+        for metric in metrics:
+            metric['fetched_on'] = datetime_utcnow().timestamp()
+
+            yield metric
+            nmetrics += 1
+
+        logger.info("Fetch process completed: %s metric keys fetched", nmetrics)
+
+    def _fetch_measures(self, **kwargs):
+        """Fetch current metric values"""
         try:
             from_date = kwargs['from_date']
         except KeyError as ke:
             from_date = DEFAULT_DATETIME
 
         nmetrics = 0
-        component_metrics_raw = self.client.component_metrics(from_date=from_date)
+        component_metrics_raw = self.client.measures(from_date=from_date)
 
         component = json.loads(component_metrics_raw)['component']
         for metric in component['measures']:
@@ -192,12 +215,14 @@ class Sonar(Backend):
 
     @staticmethod
     def metadata_category(item):
-        """Extracts the category from a Sonarqube item.
+        """Extracts the category from a Sonarqube item."""
+        METRIC_KEY = ('key', 'type', 'name', 'description', 'domain', 'direction', 'qualitative', 'hidden', 'custom')
+        CURRENT_METRIC = ('metric', 'value', 'bestValue')
 
-        This backend only generates one type of item which is
-        'metric'.
-        """
-        return CATEGORY
+        if all(key in item.keys() for key in (METRIC_KEY)):
+            return 'metric'
+        else:
+            return 'measures'
 
     def _init_client(self, from_archive=False):
         """Init client"""
@@ -220,37 +245,50 @@ class SonarClient(HttpClient):
 
     _users = {}       # users cache
 
-    def __init__(self, component, base_url=None, archive=None, from_archive=False):
+    def __init__(self, component, base_url=SONAR_URL, archive=None, from_archive=False):
         self.component = component
-
-        if base_url:
-            base_url = urijoin(base_url, SONAR_API_URL) + component
-        else:
-            base_url = urijoin(SONAR_URL, SONAR_API_URL) + component
+        base_url = urijoin(base_url, 'api')
 
         super().__init__(base_url, sleep_time=DEFAULT_DATETIME, max_retries=MAX_RETRIES,
                          archive=archive, from_archive=from_archive)
 
-    def component_metrics(self, from_date=None):
+    def metric_keys_configured_on_client(self):
+        """Get list of metric keys configured for the client.
+
+        :returns: a list of metrics
+        """
+        config = configparser.RawConfigParser()
+        config.read( CONFIGURATION_FILE )
+        metric_list = config.get( 'sonarqube' , 'TARGET_METRIC_FIELDS' )
+        return metric_list.split(',')
+
+    def metrics_configured_on_server(self):
+        """Get list of metric keys enabled on the Sonarqube instance.
+
+        :returns: a generator of metric keys
+        """
+        endpoint = self.base_url + '/metrics/search'
+        response = super().fetch(endpoint)
+
+        return response.text + '}' # sloppy fix
+
+    def measures(self, **kwargs):
         """Get metrics for a given component.
 
         :param from_date: obtain metrics updated since this date
 
         :returns: a generator of metrics
         """
-        # read config file:
-        config = configparser.RawConfigParser()
-        config.read( CONFIGURATION_FILE )
-        TARGET_METRIC_FIELDS = config.get( 'sonarqube' , 'TARGET_METRIC_FIELDS' ).split(',')
+        try:
+            metricKeys = kwargs['metricKeys']
+        except KeyError as ke:
+            metricKeys = ','.join(self.metric_keys_configured_on_client())
+        metricKeys = metricKeys.replace(',', '%2C')
+        endpoint = '{b}/measures/component?component={c}&metricKeys={k}'
+        endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
-        payload = {
-            'metricKeys': ','.join(TARGET_METRIC_FIELDS)
-        }
-
-        response = super().fetch(self.base_url, payload=payload)
-
+        response = super().fetch(endpoint)
         return response.text + '}' # sloppy fix
-
 
 class SonarCommand(BackendCommand):
     """Class to run Sonaqube backend from the command line."""

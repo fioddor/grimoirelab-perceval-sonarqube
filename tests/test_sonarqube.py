@@ -176,27 +176,27 @@ class TestSonarBackend(unittest.TestCase):
     @mock.activate
     def test_tag(self):
         '''Feched items will and can be tagged.'''
-        TST_CATEGORY = 'metrics'
+        TST_CATEGORY = 'measures'
 
         # test setup:
         projects , expected = Utilities.mock_full_projects( self.TST_URL )
 
         # AC1: will be autotagged if no tag is passed:
-        for item in self.TST_DBE.fetch( TST_CATEGORY ):
+        for item in self.TST_DBE.fetch( category=TST_CATEGORY ):
             self.assertTrue( '01' , item[ 'tag' ] )
             break
 
         # AC2: will bear the input tag:
         TST_TAG = 'a tag'
         tbe = Sonar( 'c01' , base_url=self.TST_URL , tag=TST_TAG )
-        for item in tbe.fetch( TST_CATEGORY ):
+        for item in tbe.fetch( category=TST_CATEGORY ):
             self.assertTrue( TST_TAG , item[ 'tag' ] )
             break
 
 
     def test_categories(self):
         '''No exception raised when accessing that member.'''
-        self.assertEqual( 1 , len(Sonar.CATEGORIES) )
+        self.assertEqual( 2 , len(Sonar.CATEGORIES) )
 
 
     # @unittest.skip('This feature is pending')
@@ -400,7 +400,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
 
 
     @mock.activate
-    def test_component_metrics(self):
+    def test_measures(self):
         '''Smoke test
 
         Pending: Reenable the page limit AC.
@@ -417,7 +417,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
-        response = self.TST_DTC.component_metrics()
+        response = self.TST_DTC.measures()
         record = json.loads(response)
 
         self.assertEqual( record['component']['key'], 'c01' )
@@ -500,15 +500,19 @@ class Utilities(unittest.TestCase):
 
 
     def mock_full_projects( api_url ):
-        '''Mocks the full sequence for a list of projects.'''
+        '''Mocks the full sequence for a list of projects.
+        '''
         def mock_url( list_name , query , project , max_page ):
             name  = 'c{}_{}'.format(project , list_name )
             url   = api_url + query.format( project )
             Utilities.mock_pages( name , url , max_page )
 
         # config:
-        #                            item ,  url cccc                                                                           , (P ,exp) , (P ,exp)
-        STEPS = ( ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt'    , (1 , 2) , (1 , 2) ), )
+        #                      item ,  url cccc                                                                           , (P ,exp) , (P ,exp)
+        STEPS = (
+            ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt'    , (1 , 2) , (1 , 2) ),
+            ('metric_keys'          , 'api/metrics/search'                                                                , (1 , 2) , (1 , 2) ),
+        )
         PROJECTS = ('01' , '02')
 
         # setup
