@@ -414,8 +414,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
-        response = self.TST_DTC.metrics_configured_on_server()
-        record = json.loads(response)
+        record = self.TST_DTC.metrics_configured_on_server()
 
         self.assertEqual( len(record['metrics']), 100 )
         self.assertEqual( record['metrics'][0]['key'], 'new_technical_debt' )
@@ -439,8 +438,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
-        response = self.TST_DTC.measures()
-        record = json.loads(response)
+        record = self.TST_DTC.measures()
 
         self.assertEqual( record['component']['key'], 'c01' )
         self.assertEqual( len(record['component']['measures']), 2 )

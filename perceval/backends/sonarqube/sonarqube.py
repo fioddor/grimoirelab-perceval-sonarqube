@@ -85,7 +85,7 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.1.0'
+    version = '0.2.0'
 
     CATEGORIES = ('metric', 'measures')
 
@@ -144,10 +144,9 @@ class Sonar(Backend):
 
         nmetrics = 0
         fetched_on = datetime_utcnow().timestamp()
-        metrics_raw = self.client.metrics_configured_on_server()
+        aux = self.client.metrics_configured_on_server()
 
-        metrics = json.loads(metrics_raw)['metrics']
-        for metric in metrics:
+        for metric in aux['metrics']:
             metric['fetched_on'] = fetched_on
 
             yield metric
@@ -166,7 +165,7 @@ class Sonar(Backend):
         fetched_on = datetime_utcnow().timestamp()
         component_metrics_raw = self.client.measures(**kwargs)
 
-        component = json.loads(component_metrics_raw)['component']
+        component = component_metrics_raw['component']
         for metric in component['measures']:
 
             id_args = [component['key'], metric['metric'], str(fetched_on)]
@@ -253,6 +252,15 @@ class SonarClient(HttpClient):
         super().__init__(base_url, sleep_time=DEFAULT_DATETIME, max_retries=MAX_RETRIES,
                          archive=archive, from_archive=from_archive)
 
+    def _sloppy_fix(self, response):
+        """Sloppy fix.
+
+        Something is wrong reading stored responses. The last character doesn't load.
+        Tried to reduce the leading hexadecimal counter but failed.
+        """
+        fixed = json.loads( response.text + '}' )
+        return fixed
+
     def metric_keys_configured_on_client(self):
         """Get list of metric keys configured for the client.
 
@@ -270,8 +278,7 @@ class SonarClient(HttpClient):
         """
         endpoint = self.base_url + '/metrics/search'
         response = super().fetch(endpoint)
-
-        return response.text + '}' # sloppy fix
+        return self._sloppy_fix(response) 
 
     def measures(self, **kwargs):
         """Get metrics for a given component.
@@ -289,8 +296,7 @@ class SonarClient(HttpClient):
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
         response = super().fetch(endpoint)
-
-        return response.text + '}' # sloppy fix
+        return self._sloppy_fix(response)
 
 class SonarCommand(BackendCommand):
     """Class to run Sonaqube backend from the command line."""
