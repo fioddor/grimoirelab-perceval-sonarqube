@@ -138,6 +138,8 @@ class Sonar(Backend):
             return self._fetch_metrics(**kwargs)
         elif category == 'measures':
             return self._fetch_measures(**kwargs)
+        elif category == 'history':
+            return self._fetch_history(**kwargs)
         else:
             raise NotImplementedError
 
@@ -179,6 +181,32 @@ class Sonar(Backend):
 
         logger.info("Fetch process completed: %s metrics fetched", nmetrics)
 
+    def _fetch_history(self, **kwargs):
+        """Fetch current metric values"""
+        try:
+            _ = kwargs['from_date']
+        except KeyError as ke:
+            kwargs['from_date'] = DEFAULT_DATETIME
+
+        nmetrics = 0
+        fetched_on = datetime_utcnow().timestamp()
+
+        component_metrics_history_raw = self.client.history(**kwargs)
+        histories = component_metrics_history_raw['measures']
+        for metric_history in histories:
+            key = metric_history['metric']
+            for measure in metric_history['history']:
+                id_args = [self.component, key, str(fetched_on)]
+                yield {
+                    'id': uuid(*id_args),
+                    'metric': key,
+                    'value': measure['value'],
+                    'measured_on': measure['date'],
+                    'fetched_on': fetched_on
+                }
+            nmetrics += 1
+
+        logger.info("Fetch process completed: histories for %s metrics fetched", nmetrics)
 
     @classmethod
     def has_archiving(cls):
@@ -286,7 +314,7 @@ class SonarClient(HttpClient):
     def measures(self, **kwargs):
         """Get metrics for a given component.
 
-        :param from_date: obtain metrics updated since this date
+        :param from_date: obtain metrics updated since this date. Not implemented yet.
 
         :returns: a generator of metrics
         """
@@ -300,6 +328,25 @@ class SonarClient(HttpClient):
 
         response = super().fetch(endpoint)
         return self._sloppy_fix(response)
+
+    def history(self, **kwargs):
+        """Get histories of metrics for a given component.
+
+        :param from_date: obtain metrics updated since this date. Not implemented yet.
+
+        :returns: a generator of measures
+        """
+        try:
+            metricKeys = kwargs['metricKeys']
+        except KeyError as ke:
+            metricKeys = ','.join(self.metric_keys_configured_on_client())
+        metricKeys = metricKeys.replace(',', '%2C')
+        endpoint = '{b}/measures/search_history?component={c}&metrics={k}'
+        endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
+
+        response = super().fetch(endpoint)
+        return self._sloppy_fix(response)
+
 
 class SonarCommand(BackendCommand):
     """Class to run Sonaqube backend from the command line."""

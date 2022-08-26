@@ -417,7 +417,6 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
 
         # test setup:
         TST_URL = self.API_URL + TST_QUERY
-        print(TST_URL)
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
@@ -441,7 +440,6 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
 
         # test setup:
         TST_URL = self.API_URL + TST_QUERY
-        print(TST_URL)
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
@@ -466,6 +464,46 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         #self.assertLess(        TST_FULL_PAGES * TST_PER_PAGE , len(record) )
         #self.assertGreaterEqual( TST_AVAILABLE * TST_PER_PAGE , len(record) )
 
+
+    @mock.activate
+    def test_history(self):
+        '''Smoke test
+
+        Pending: Reenable the page limit AC.
+        '''
+
+        # test config:
+        TST_QUERY      = 'api/measures/search_history?component=c01&metrics=accessors%2Cnew_technical_debt'
+                                                                          #'bugs%2Ccoverage%2Ccomplexity%2Csqale_rating%2Cblocker_violations%2Ccode_smells'
+        TST_PREFIX     = 'c01_history_component_6' # Prefix of the file names containing the mocked responses.
+        TST_AVAILABLE  = 1                         # Number of mocked pages available to respond the query.
+
+        # test setup:
+        TST_URL = self.API_URL + TST_QUERY
+        self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
+
+        # Smoke test
+        record = self.TST_DTC.history()
+
+        self.assertEqual( record['paging']['pageIndex'], 1 )
+        self.assertEqual( record['measures'][0]['metric'], 'bugs' )
+        self.assertEqual( len(record['measures']), 6 )
+
+        # AC1: expect limit, if limit < available:
+        #limit = TST_FULL_PAGES
+        #record = self.TST_DTC.rq( TST_QUERY , limit )
+        #self.assertEqual( limit * TST_PER_PAGE , len(record) )
+
+        # AC2: expect available, if available =< limit:
+        #limit = TST_AVAILABLE + TST_SOME_MORE
+        #record = self.TST_DTC.rq( TST_QUERY , limit )
+        #self.assertLess(        TST_FULL_PAGES * TST_PER_PAGE , len(record) )
+        #self.assertGreaterEqual( TST_AVAILABLE * TST_PER_PAGE , len(record) )
+
+        # AC3: expect available, on missing limit:
+        #record = self.TST_DTC.rq( TST_QUERY )
+        #self.assertLess(        TST_FULL_PAGES * TST_PER_PAGE , len(record) )
+        #self.assertGreaterEqual( TST_AVAILABLE * TST_PER_PAGE , len(record) )
 
 
 class Utilities(unittest.TestCase):
@@ -539,6 +577,7 @@ class Utilities(unittest.TestCase):
         STEPS = (
             ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt'    , (1 , 2) , (1 , 2) ),
             ('metric_keys'          , 'api/metrics/search'                                                                , (1 , 2) , (1 , 2) ),
+            ('history_component_6'  , 'api/measures/search_history?component=c{}&metrics=accessors%2Cnew_technical_debt'  , (1 , 2) , (1 , 2) ),
         )
         PROJECTS = ('01' , '02')
 
