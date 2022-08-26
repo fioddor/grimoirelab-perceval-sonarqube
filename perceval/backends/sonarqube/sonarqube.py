@@ -143,11 +143,12 @@ class Sonar(Backend):
         """Fetch enabled metric keys"""
 
         nmetrics = 0
+        fetched_on = datetime_utcnow().timestamp()
         metrics_raw = self.client.metrics_configured_on_server()
 
         metrics = json.loads(metrics_raw)['metrics']
         for metric in metrics:
-            metric['fetched_on'] = datetime_utcnow().timestamp()
+            metric['fetched_on'] = fetched_on
 
             yield metric
             nmetrics += 1
@@ -162,12 +163,12 @@ class Sonar(Backend):
             from_date = DEFAULT_DATETIME
 
         nmetrics = 0
+        fetched_on = datetime_utcnow().timestamp()
         component_metrics_raw = self.client.measures(from_date=from_date)
 
         component = json.loads(component_metrics_raw)['component']
         for metric in component['measures']:
 
-            fetched_on = datetime_utcnow().timestamp()
             id_args = [component['key'], metric['metric'], str(fetched_on)]
             metric['id'] = uuid(*id_args)
             metric['fetched_on'] = fetched_on
