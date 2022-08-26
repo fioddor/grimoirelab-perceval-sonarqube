@@ -400,6 +400,28 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
 
 
     @mock.activate
+    def test_metrics_configured_on_server(self):
+        '''Smoke test'''
+
+        # test config:
+        TST_QUERY      = 'api/metrics/search'
+        TST_PREFIX     = 'c01_metric_keys'          # Prefix of the file names containing the mocked responses.
+        TST_AVAILABLE  = 1                          # Number of mocked pages available to respond the query.
+
+        # test setup:
+        TST_URL = self.API_URL + TST_QUERY
+        print(TST_URL)
+        self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
+
+        # Smoke test
+        response = self.TST_DTC.metrics_configured_on_server()
+        record = json.loads(response)
+
+        self.assertEqual( len(record['metrics']), 100 )
+        self.assertEqual( record['metrics'][0]['key'], 'new_technical_debt' )
+
+
+    @mock.activate
     def test_measures(self):
         '''Smoke test
 
