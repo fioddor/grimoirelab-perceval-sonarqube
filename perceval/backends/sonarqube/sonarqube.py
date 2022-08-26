@@ -158,13 +158,13 @@ class Sonar(Backend):
     def _fetch_measures(self, **kwargs):
         """Fetch current metric values"""
         try:
-            from_date = kwargs['from_date']
+            _ = kwargs['from_date']
         except KeyError as ke:
-            from_date = DEFAULT_DATETIME
+            kwargs['from_date'] = DEFAULT_DATETIME
 
         nmetrics = 0
         fetched_on = datetime_utcnow().timestamp()
-        component_metrics_raw = self.client.measures(from_date=from_date)
+        component_metrics_raw = self.client.measures(**kwargs)
 
         component = json.loads(component_metrics_raw)['component']
         for metric in component['measures']:
@@ -289,6 +289,7 @@ class SonarClient(HttpClient):
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
         response = super().fetch(endpoint)
+
         return response.text + '}' # sloppy fix
 
 class SonarCommand(BackendCommand):
