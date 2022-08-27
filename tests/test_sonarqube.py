@@ -203,10 +203,9 @@ class TestSonarBackend(unittest.TestCase):
 
     def test_categories(self):
         '''No exception raised when accessing that member.'''
-        self.assertEqual( 2 , len(Sonar.CATEGORIES) )
+        self.assertEqual( 3 , len(Sonar.CATEGORIES) )
 
 
-    # @unittest.skip('This feature is pending')
     @mock.activate
     def test_metadata_category(self):
         '''Each item category is identified.'''

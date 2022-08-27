@@ -87,7 +87,7 @@ class Sonar(Backend):
     """
     version = '0.2.0'
 
-    CATEGORIES = ('metric', 'measures')
+    CATEGORIES = ('metric', 'measures', 'history')
 
     def __init__(self, component, base_url=SONAR_URL, tag=None, archive=None):
         if not component:
@@ -252,8 +252,10 @@ class Sonar(Backend):
 
         if all(key in item.keys() for key in (METRIC_KEY)):
             return 'metric'
-        else:
+        elif all(key in item.keys() for key in (CURRENT_METRIC)):
             return 'measures'
+        else:
+            return 'history'
 
     def _init_client(self, from_archive=False):
         """Init client"""
@@ -315,7 +317,6 @@ class SonarClient(HttpClient):
         """Get metrics for a given component.
 
         :param from_date: obtain metrics updated since this date. Not implemented yet.
-
         :returns: a generator of metrics
         """
         try:
@@ -333,7 +334,6 @@ class SonarClient(HttpClient):
         """Get histories of metrics for a given component.
 
         :param from_date: obtain metrics updated since this date. Not implemented yet.
-
         :returns: a generator of measures
         """
         try:
