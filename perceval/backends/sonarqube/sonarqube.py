@@ -89,7 +89,9 @@ class Sonar(Backend):
 
     CATEGORIES = ('metric', 'measures')
 
-    def __init__(self, component=None, base_url=SONAR_URL, tag=None, archive=None):
+    def __init__(self, component, base_url=SONAR_URL, tag=None, archive=None):
+        if not component:
+            raise MandatoryArgumentMissig('a component.')
         origin = urijoin(base_url, 'api/')
 
         super().__init__(origin, tag=tag, archive=archive)
@@ -176,6 +178,7 @@ class Sonar(Backend):
             nmetrics += 1
 
         logger.info("Fetch process completed: %s metrics fetched", nmetrics)
+
 
     @classmethod
     def has_archiving(cls):
@@ -321,3 +324,17 @@ class SonarCommand(BackendCommand):
                                    help="Sonarqube component/project")
 
         return parser
+
+
+class UsageError(Exception):
+    '''Abstract exception for marking exceptions caused by wrong usage.'''
+    def __init__(self, message=''):
+        super().__init__( message )
+
+
+class MandatoryArgumentMissig( UsageError ):
+    '''A call was made missing a mandatory argument.'''
+    def __init__(self, details=''):
+        ERR_MESSAGE = 'Tried to init a SonarClient without {}'
+        if details:
+            super().__init__( ERR_MESSAGE.format(details) )

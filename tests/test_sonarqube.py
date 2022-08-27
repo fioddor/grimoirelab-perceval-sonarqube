@@ -127,6 +127,13 @@ class TestSonarBackend(unittest.TestCase):
         print() # sloppy testing fix
 
 
+    def test_wrong_calls(self):
+        with self.assertRaises( TypeError , msg='An empty init should have raised an Exception'):
+            tsc = Sonar()
+        with self.assertRaises( TypeError , msg='An init missing the component should have raised an Exception'):
+            tsc = Sonar( base_url=self.TST_URL )
+
+
     def test_has_resuming(self):
         '''Expect True, but really?'''
         self.assertTrue( self.TST_DBE.has_resuming() )
