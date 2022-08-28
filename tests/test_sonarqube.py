@@ -239,14 +239,14 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
     """
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(self):
         '''Set up Sonarqube service'''
 
 
         TST_ORI = 'c01'
-        cls.API_URL = 'https://a.sonarqube.instance/'
+        self.API_URL = 'https://a.sonarqube.instance/'
         # Default Sonarqube Client for testing:
-        cls.TST_DTC = SonarClient( TST_ORI, base_url=cls.API_URL )
+        self.TST_DTC = SonarClient( TST_ORI, base_url=self.API_URL )
 
 
     def http_code_nr(self, name ):
@@ -473,7 +473,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
 
         # test config:
         TST_QUERY      = 'api/measures/search_history?component=c01&metrics=accessors%2Cnew_technical_debt'
-                                                                          #'bugs%2Ccoverage%2Ccomplexity%2Csqale_rating%2Cblocker_violations%2Ccode_smells'
+        TST_METRICS    = ('bugs', 'coverage', 'complexity', 'sqale_rating', 'blocker_violations','code_smells')
         TST_PREFIX     = 'c01_history_component_6' # Prefix of the file names containing the mocked responses.
         TST_AVAILABLE  = 1                         # Number of mocked pages available to respond the query.
 
@@ -482,11 +482,32 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
 
         # Smoke test
-        record = self.TST_DTC.history()
+        history = self.TST_DTC.history()
 
-        self.assertEqual( record['paging']['pageIndex'], 1 )
-        self.assertEqual( record['measures'][0]['metric'], 'bugs' )
-        self.assertEqual( len(record['measures']), 6 )
+        self.assertEqual( len(history), 6 )
+        self.assertFalse( set(history.keys()).difference(set(TST_METRICS)) )
+        self.assertEqual( len(history['bugs']), 100 )
+        self.assertFalse( set(history['bugs'][0].keys()).difference(set(('date' ,'value'))) )
+
+        # test config:
+        TST_QUERY      = 'api/measures/search_history?component=c02&metrics=accessors%2Cnew_technical_debt'
+        TST_METRICS    = ('bugs', 'blocker_violations')
+        TST_PREFIX     = 'c02_history_component_6' # Prefix of the file names containing the mocked responses.
+        TST_AVAILABLE  = 4                         # Number of mocked pages available to respond the query.
+
+        # test setup:
+        print('DEBUG Testing paged')
+        TST_URL = self.API_URL + TST_QUERY
+        self.mock_pages( TST_PREFIX , TST_URL , TST_AVAILABLE )
+
+        # Smoke test
+        self.TST_DTC = SonarClient( 'c02', base_url=self.API_URL )
+        history2 = self.TST_DTC.history()
+
+        self.assertEqual( len(history2), 2 )
+        self.assertFalse( set(history2.keys()).difference(set(TST_METRICS)) )
+        self.assertEqual( len(history2['blocker_violations']), 64 )
+        self.assertFalse( set(history2['blocker_violations'][0].keys()).difference(set(('date' ,'value'))) )
 
         # AC1: expect limit, if limit < available:
         #limit = TST_FULL_PAGES
@@ -548,7 +569,7 @@ class Utilities(unittest.TestCase):
 
             url = query
             if 0 < p:
-                url += '&page={}'.format( page )
+                url += '&ps=20&p={}'.format( page )
 
             TST_DIR = 'data/'
             body_file = '{}{}.P{}.body.RS'.format( TST_DIR , name , page )
@@ -576,7 +597,7 @@ class Utilities(unittest.TestCase):
         STEPS = (
             ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt'    , (1 , 2) , (1 , 2) ),
             ('metric_keys'          , 'api/metrics/search'                                                                , (1 , 2) , (1 , 2) ),
-            ('history_component_6'  , 'api/measures/search_history?component=c{}&metrics=accessors%2Cnew_technical_debt'  , (1 , 2) , (1 , 2) ),
+            ('history_component_6'  , 'api/measures/search_history?component=c{}&metrics=accessors%2Cnew_technical_debt'  , (1 , 2) , (3 , 2) ),
         )
         PROJECTS = ('01' , '02')
 

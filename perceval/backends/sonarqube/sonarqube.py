@@ -85,7 +85,7 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.2.0'
+    version = '0.3.0'
 
     CATEGORIES = ('metric', 'measures', 'history')
 
@@ -191,15 +191,13 @@ class Sonar(Backend):
         nmetrics = 0
         fetched_on = datetime_utcnow().timestamp()
 
-        component_metrics_history_raw = self.client.history(**kwargs)
-        histories = component_metrics_history_raw['measures']
-        for metric_history in histories:
-            key = metric_history['metric']
-            for measure in metric_history['history']:
-                id_args = [self.component, key, str(fetched_on)]
+        histories = self.client.history(**kwargs)
+        for metric, history in histories.items():
+            for measure in history:
+                id_args = [self.component, metric, measure['date']]
                 yield {
                     'id': uuid(*id_args),
-                    'metric': key,
+                    'metric': metric,
                     'value': measure['value'],
                     'measured_on': measure['date'],
                     'fetched_on': fetched_on
@@ -336,6 +334,24 @@ class SonarClient(HttpClient):
         :param from_date: obtain metrics updated since this date. Not implemented yet.
         :returns: a generator of measures
         """
+        fetch = super().fetch
+        PAGE_SIZE=20
+
+        def _format(measures):
+            '''Formats the histories of measures for easier accumulation.'''
+            output = {}
+            for metric in measures:
+                key = metric['metric']
+                output[key] = metric['history']
+            return output
+
+        def _get_page(page):
+            pager = '&ps={s}&p={p}'.format(s=PAGE_SIZE,p=page) if page > 1 else ''
+            response = fetch(endpoint + pager)
+            aux = self._sloppy_fix(response)
+            response.close()
+            return aux['paging'], _format(aux['measures'])
+
         try:
             metricKeys = kwargs['metricKeys']
         except KeyError as ke:
@@ -344,8 +360,15 @@ class SonarClient(HttpClient):
         endpoint = '{b}/measures/search_history?component={c}&metrics={k}'
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
-        response = super().fetch(endpoint)
-        return self._sloppy_fix(response)
+        page = 1
+        paging, output = _get_page(page)
+        while paging['pageIndex'] * paging['pageSize'] < paging['total']:
+            page = page + 1
+            paging, chunk = _get_page(page)
+            for metric, history in chunk.items():
+                output[metric].extend(history)
+
+        return output
 
 
 class SonarCommand(BackendCommand):
