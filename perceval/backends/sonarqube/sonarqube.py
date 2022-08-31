@@ -53,8 +53,6 @@ PER_PAGE = 100
 DEFAULT_SLEEP_TIME = 1
 MAX_RETRIES = 5
 
-# For the moment static but should be either parameter, either remove
-# list parameter
 
 logger = logging.getLogger(__name__)
 
