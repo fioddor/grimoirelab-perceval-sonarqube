@@ -333,7 +333,7 @@ class SonarClient(HttpClient):
         :returns: a generator of measures
         """
         fetch = super().fetch
-        PAGE_SIZE=20
+        page_size = 50
 
         def _format(measures):
             '''Formats the histories of measures for easier accumulation.'''
@@ -344,10 +344,12 @@ class SonarClient(HttpClient):
             return output
 
         def _get_page(page):
-            pager = '&ps={s}&p={p}'.format(s=PAGE_SIZE,p=page) if page > 1 else ''
+            global page_size
+            pager = '&ps={s}&p={p}'.format(s=page_size,p=page) if page > 1 else ''
             response = fetch(endpoint + pager)
             aux = self._sloppy_fix(response)
             response.close()
+            page_size = int(aux['paging']['pageSize'])
             return aux['paging'], _format(aux['measures'])
 
         try:
