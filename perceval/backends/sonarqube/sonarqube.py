@@ -389,6 +389,11 @@ class SonarCommand(BackendCommand):
         group.add_argument('--base-url', dest='base_url',
                            help="Base URL for Sonarqube instance")
 
+        # Optional arguments
+        group.add_argument('--metricKeys', dest='metricKeys',
+                           type=str, default=None,
+                           help="Comma-separated list of Sonarqube metrics to fetch")
+
         # Positional arguments
         parser.parser.add_argument('component',
                                    help="Sonarqube component/project")

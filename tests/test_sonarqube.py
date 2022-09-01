@@ -93,6 +93,18 @@ class TestSonarCommand(unittest.TestCase):
         self.assertEqual( TST_URL , pa.base_url  )
         self.assertEqual( TST_TAG , pa.tag       )
 
+        # TC03: metricKeys:
+        TST_LST = 'a,b,c'
+        args = [ '--base-url'   , TST_URL
+               , '--metricKeys' , TST_LST
+               , TST_ORI
+               ]
+
+        pa = parser.parse(*args)
+
+        self.assertEqual( TST_ORI , pa.component  )
+        self.assertEqual( TST_URL , pa.base_url   )
+        self.assertEqual( TST_LST , pa.metricKeys )
 
 
 
