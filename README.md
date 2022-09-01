@@ -3,7 +3,7 @@ A grimoirelab-perceval backend for the API of a Sonarqube service [1] that extra
 It is basic backend of grimoirelab-perceval [2], the data collector of CHAOSS GrimoireLab Tool.
 
 ## Deployment
-This backend needs perceveal installed.
+This backend needs [perceval](https://github.com/chaoss/grimoirelab-perceval) installed.
 
 The perceval/backends/core/sonarqube.py executable beelongs inside /usr/local/lib/python3.5/dist-packages/
 (as /usr/local/lib/python3.5/dist-packages/perceval/backends/core/sonarqube.py) to
