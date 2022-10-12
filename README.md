@@ -5,10 +5,36 @@ It is basic backend of grimoirelab-perceval [2], the data collector of CHAOSS Gr
 ## Deployment
 This backend needs [perceval](https://github.com/chaoss/grimoirelab-perceval) installed.
 
-The perceval/backends/core/sonarqube.py executable beelongs inside /usr/local/lib/python3.5/dist-packages/
-(as /usr/local/lib/python3.5/dist-packages/perceval/backends/core/sonarqube.py) to
+The perceval/backends/sonarqube/sonarqube.py executable beelongs inside /usr/local/lib/python3.5/dist-packages/
+(as /usr/local/lib/python3.5/dist-packages/perceval/backends/sonarqube/sonarqube.py) to
 - be available for perceval and the test runners.
 - have perceval available.
+
+## Configuration
+The executable expects the configuration file perceval/backends/sonarqube/sonarqube.cfg to be on the same directory.
+It accepts the following (sections and) parameters:
+
+[connection]
+
+- SSL_VERIFY accepts True/False, Y/N, Yes/No.
+- API_TOKEN is a user token for the SonarQube API.
+
+[sonarqube]
+
+- TARGET_METRIC_FIELDS is a list of Sonarqube metric names sepparated by commas.
+
+## Configuration
+The executable expects the configuration file perceval/backends/sonarqube/sonarqube.cfg to be on the same directory.
+It accepts the following (sections and) parameters:
+
+[connection]
+
+- SSL_VERIFY accepts True/False, Y/N, Yes/No.
+- API_TOKEN is a user token for the SonarQube API.
+
+[sonarqube]
+
+- TARGET_METRIC_FIELDS is a list of Sonarqube metric names sepparated by commas.
 
 ## Usage
 Once correctly deployed this backend is used like any other. `perceval sonarqube --help` shows the corresponding help, with the list of available categories for Sonarqube.

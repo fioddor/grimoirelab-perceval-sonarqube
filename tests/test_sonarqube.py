@@ -235,6 +235,50 @@ class TestSonarBackend(unittest.TestCase):
                 self.assertEqual( category , tbe.metadata_category( item ) )
                 break
 
+class TestSonarClientAgainstConfigurations(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        '''Set up common arguments'''
+        self.TST_ORI = 'c01'
+        self.API_URL = 'https://a.sonarqube.instance/'
+        self.TST_DIR = 'tests/data/'
+
+    def test_base(self):
+        sc = SonarClient( self.TST_ORI, base_url=self.API_URL )
+        self.assertTrue( sc.ssl_verify )
+
+    def test_no_connection(self):
+        cfg = self.TST_DIR + 'sonarqube-no_connection.cfg'
+        sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
+        self.assertTrue( sc.ssl_verify )
+        self.assertIsNone( sc.auth )
+
+    def test_ssl_verify_missing(self):
+        cfg = self.TST_DIR + 'sonarqube-ssl_verify-missing.cfg'
+        sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
+        self.assertTrue( sc.ssl_verify )
+        self.assertIsNotNone( sc.auth )
+
+    def test_ssl_verify(self):
+        data = ('sonarqube-ssl_verify-false',
+                'sonarqube-ssl_verify-False',
+                'sonarqube-ssl_verify-FalSe',
+                'sonarqube-ssl_verify-No',
+                'sonarqube-ssl_verify-N')
+        for input in data:
+            cfg = self.TST_DIR +  input + '.cfg'
+            sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
+            self.assertFalse( sc.ssl_verify )
+
+    def test_token(self):
+        data = ('sonarqube-ssl_verify-False',
+                'sonarqube-ssl_verify-FalSe')
+        for input in data:
+            cfg = self.TST_DIR +  input + '.cfg'
+            sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
+            self.assertIsNotNone( sc.auth )
+
 
 
 class TestSonarClientAgainstMockServer(unittest.TestCase):
@@ -576,6 +620,7 @@ class Utilities(unittest.TestCase):
 
     def mock_pages( name , query , max_page ):
         '''Mocks a series of pages.'''
+
         for p in range( max_page ):
             page = p + 1
 

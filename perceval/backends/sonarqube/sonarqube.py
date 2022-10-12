@@ -22,10 +22,10 @@
 #     Igor Zubiaurre <izubiaurre@bitergia.com>
 #
 
-import configparser                   # common usage.
+import configparser
 import json
 import logging
-import os                             # for read_file().
+import os
 
 from grimoirelab_toolkit.datetime import (datetime_to_utc,
                                           datetime_utcnow)
@@ -37,8 +37,9 @@ from ...backend import (Backend,
                         uuid)
 from ...client import HttpClient
 from ...utils import DEFAULT_DATETIME
+from requests.auth import HTTPBasicAuth
 
-CONFIGURATION_FILE = 'perceval/backends/sonarqube/sonarqube.cfg'
+CONFIGURATION_FILE = os.path.dirname(os.path.abspath(__file__)) + '/sonarqube.cfg'
 DEFAULT_CATEGORY = 'measures'
 
 SONAR_URL = "https://sonarcloud.io/"
@@ -83,7 +84,7 @@ class Sonar(Backend):
     :param tag: label used to mark the data
     :param archive: archive to store/retrieve items
     """
-    version = '0.3.0'
+    version = '0.5.0'
 
     CATEGORIES = ('metric', 'measures', 'history')
 
@@ -274,12 +275,34 @@ class SonarClient(HttpClient):
 
     _users = {}       # users cache
 
-    def __init__(self, component, base_url=SONAR_URL, archive=None, from_archive=False):
+    def __init__(self, component, base_url=SONAR_URL, archive=None, from_archive=False, config=CONFIGURATION_FILE):
         self.component = component
+
+        logger.info("Reading sonarqube backend configuration from %s", config)
+        configuration = configparser.RawConfigParser()
+        configuration.read( config )
+
+        try:
+            ssl_verify_text = configuration.get( 'connection' , 'SSL_VERIFY' )
+            self.ssl_verify = not ssl_verify_text.lower() in ('false', 'no', 'n')
+        except configparser.NoSectionError:
+            self.ssl_verify = True
+        except configparser.NoOptionError:
+            self.ssl_verify = True
+
+        try:
+            token = configuration.get( 'connection' , 'API_TOKEN' )
+            self.auth = HTTPBasicAuth(token, '')
+        except configparser.NoSectionError:
+            self.auth = None
+        except configparser.NoOptionError:
+            self.auth = None
+
         base_url = urijoin(base_url, 'api')
 
         super().__init__(base_url, sleep_time=DEFAULT_DATETIME, max_retries=MAX_RETRIES,
-                         archive=archive, from_archive=from_archive)
+                         archive=archive, from_archive=from_archive,
+                         ssl_verify=self.ssl_verify)
 
     def metric_keys_configured_on_client(self):
         """Get list of metric keys configured for the client.
@@ -297,7 +320,7 @@ class SonarClient(HttpClient):
         :returns: a generator of metric keys
         """
         endpoint = self.base_url + '/metrics/search'
-        response = super().fetch(endpoint)
+        response = super().fetch(endpoint, auth=self.auth)
         return response.json()
 
     def measures(self, **kwargs):
@@ -313,7 +336,7 @@ class SonarClient(HttpClient):
         endpoint = '{b}/measures/component?component={c}&metricKeys={k}'
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
-        response = super().fetch(endpoint)
+        response = super().fetch(endpoint, auth=self.auth)
         return response.json()
 
     def history(self, **kwargs):
@@ -336,7 +359,7 @@ class SonarClient(HttpClient):
         def _get_page(page):
             global page_size
             pager = '&ps={s}&p={p}'.format(s=page_size,p=page) if page > 1 else ''
-            response = fetch(endpoint + pager)
+            response = fetch(endpoint + pager, auth=self.auth)
             aux = response.json()
             response.close()
             page_size = int(aux['paging']['pageSize'])
