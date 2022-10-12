@@ -445,7 +445,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         '''
 
         # test config:
-        TST_QUERY      = 'api/measures/component?component=c01&metricKeys=accessors%2Cnew_technical_debt'
+        TST_QUERY      = 'api/measures/component?component=c01&metricKeys=accessors,new_technical_debt'
         TST_PREFIX     = 'c01_measures_component_2' # Prefix of the file names containing the mocked responses.
         TST_AVAILABLE  = 1                          # Number of mocked pages available to respond the query.
 
@@ -484,7 +484,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         '''
 
         # test config:
-        TST_QUERY      = 'api/measures/search_history?component=c01&metrics=accessors%2Cnew_technical_debt'
+        TST_QUERY      = 'api/measures/search_history?component=c01&metrics=accessors,new_technical_debt'
         TST_METRICS    = ('bugs', 'coverage', 'complexity', 'sqale_rating', 'blocker_violations','code_smells')
         TST_PREFIX     = 'c01_history_component_6' # Prefix of the file names containing the mocked responses.
         TST_AVAILABLE  = 1                         # Number of mocked pages available to respond the query.
@@ -502,7 +502,7 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         self.assertFalse( set(history['bugs'][0].keys()).difference(set(('date' ,'value'))) )
 
         # test config:
-        TST_QUERY      = 'api/measures/search_history?component=c02&metrics=accessors%2Cnew_technical_debt'
+        TST_QUERY      = 'api/measures/search_history?component=c02&metrics=accessors,new_technical_debt'
         TST_METRICS    = ('bugs', 'blocker_violations')
         TST_PREFIX     = 'c02_history_component_6' # Prefix of the file names containing the mocked responses.
         TST_AVAILABLE  = 4                         # Number of mocked pages available to respond the query.
@@ -605,11 +605,11 @@ class Utilities(unittest.TestCase):
             Utilities.mock_pages( name , url , max_page )
 
         # config:
-        #                      item ,  url cccc                                                                           , (P ,exp) , (P ,exp)
+        #                      item ,  url cccc                                                                         , (P ,exp) , (P ,exp)
         STEPS = (
-            ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt'    , (1 , 2) , (1 , 2) ),
-            ('metric_keys'          , 'api/metrics/search'                                                                , (1 , 2) , (1 , 2) ),
-            ('history_component_6'  , 'api/measures/search_history?component=c{}&metrics=accessors%2Cnew_technical_debt'  , (1 , 2) , (3 , 2) ),
+            ('measures_component_2' , 'api/measures/component?component=c{}&metricKeys=accessors,new_technical_debt'    , (1 , 2) , (1 , 2) ),
+            ('metric_keys'          , 'api/metrics/search'                                                              , (1 , 2) , (1 , 2) ),
+            ('history_component_6'  , 'api/measures/search_history?component=c{}&metrics=accessors,new_technical_debt'  , (1 , 2) , (3 , 2) ),
         )
         PROJECTS = ('01' , '02')
 
@@ -642,7 +642,7 @@ class Utilities(unittest.TestCase):
 
         Usage: adapt, enable by commenting the leading unittest.skip decorator and call
         '''
-        self.capture_component_metrics_RS('api/measures/component?component=c{}&metricKeys=accessors%2Cnew_technical_debt', 'data/c01_measures_component_2.P1.PART.RS')
+        self.capture_component_metrics_RS('api/measures/component?component=c{}&metricKeys=accessors,new_technical_debt', 'data/c01_measures_component_2.P1.PART.RS')
 
 
     def capture_pj_list_RS(self, project_id, list_name, page=None):

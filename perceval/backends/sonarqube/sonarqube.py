@@ -310,7 +310,6 @@ class SonarClient(HttpClient):
             metricKeys = kwargs['metricKeys']
         except KeyError as ke:
             metricKeys = ','.join(self.metric_keys_configured_on_client())
-        metricKeys = metricKeys.replace(',', '%2C')
         endpoint = '{b}/measures/component?component={c}&metricKeys={k}'
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
@@ -347,7 +346,6 @@ class SonarClient(HttpClient):
             metricKeys = kwargs['metricKeys']
         except KeyError as ke:
             metricKeys = ','.join(self.metric_keys_configured_on_client())
-        metricKeys = metricKeys.replace(',', '%2C')
         endpoint = '{b}/measures/search_history?component={c}&metrics={k}'
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
