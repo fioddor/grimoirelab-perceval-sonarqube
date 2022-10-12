@@ -5,10 +5,7 @@ It is basic backend of grimoirelab-perceval [2], the data collector of CHAOSS Gr
 ## Deployment
 This backend needs [perceval](https://github.com/chaoss/grimoirelab-perceval) installed.
 
-The perceval/backends/sonarqube/sonarqube.py executable beelongs inside /usr/local/lib/python3.5/dist-packages/
-(as /usr/local/lib/python3.5/dist-packages/perceval/backends/sonarqube/sonarqube.py) to
-- be available for perceval and the test runners.
-- have perceval available.
+Then fine tune and run `sudo ./INSTALL.sh`.
 
 ## Configuration
 The executable expects the configuration file perceval/backends/sonarqube/sonarqube.cfg to be on the same directory.
