@@ -281,15 +281,6 @@ class SonarClient(HttpClient):
         super().__init__(base_url, sleep_time=DEFAULT_DATETIME, max_retries=MAX_RETRIES,
                          archive=archive, from_archive=from_archive)
 
-    def _sloppy_fix(self, response):
-        """Sloppy fix.
-
-        Something is wrong reading stored responses. The last character doesn't load.
-        Tried to reduce the leading hexadecimal counter but failed.
-        """
-        fixed = json.loads( response.text + '}' )
-        return fixed
-
     def metric_keys_configured_on_client(self):
         """Get list of metric keys configured for the client.
 
@@ -307,7 +298,7 @@ class SonarClient(HttpClient):
         """
         endpoint = self.base_url + '/metrics/search'
         response = super().fetch(endpoint)
-        return self._sloppy_fix(response) 
+        return response.json()
 
     def measures(self, **kwargs):
         """Get metrics for a given component.
@@ -324,7 +315,7 @@ class SonarClient(HttpClient):
         endpoint = endpoint.format(b=self.base_url, c=self.component, k=metricKeys)
 
         response = super().fetch(endpoint)
-        return self._sloppy_fix(response)
+        return response.json()
 
     def history(self, **kwargs):
         """Get histories of metrics for a given component.
@@ -347,7 +338,7 @@ class SonarClient(HttpClient):
             global page_size
             pager = '&ps={s}&p={p}'.format(s=page_size,p=page) if page > 1 else ''
             response = fetch(endpoint + pager)
-            aux = self._sloppy_fix(response)
+            aux = response.json()
             response.close()
             page_size = int(aux['paging']['pageSize'])
             return aux['paging'], _format(aux['measures'])
