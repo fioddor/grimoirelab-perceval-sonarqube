@@ -245,22 +245,26 @@ class TestSonarClientAgainstConfigurations(unittest.TestCase):
         self.TST_DIR = 'tests/data/'
 
     def test_base(self):
+        '''Take default configuration'''
         sc = SonarClient( self.TST_ORI, base_url=self.API_URL )
         self.assertTrue( sc.ssl_verify )
 
     def test_no_connection(self):
+        '''Config file lacks [Connection] section'''
         cfg = self.TST_DIR + 'sonarqube-no_connection.cfg'
         sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
         self.assertTrue( sc.ssl_verify )
         self.assertIsNone( sc.auth )
 
     def test_ssl_verify_missing(self):
+        '''Config file lacks SSL_VERIFY assignment'''
         cfg = self.TST_DIR + 'sonarqube-ssl_verify-missing.cfg'
         sc = SonarClient( self.TST_ORI, base_url=self.API_URL, config=cfg)
         self.assertTrue( sc.ssl_verify )
         self.assertIsNotNone( sc.auth )
 
     def test_ssl_verify(self):
+        '''Take different values for SSL_VERIFY'''
         data = ('sonarqube-ssl_verify-false',
                 'sonarqube-ssl_verify-False',
                 'sonarqube-ssl_verify-FalSe',
@@ -272,6 +276,7 @@ class TestSonarClientAgainstConfigurations(unittest.TestCase):
             self.assertFalse( sc.ssl_verify )
 
     def test_token(self):
+        '''Take token from config file'''
         data = ('sonarqube-ssl_verify-False',
                 'sonarqube-ssl_verify-FalSe')
         for input in data:
@@ -342,84 +347,6 @@ class TestSonarClientAgainstMockServer(unittest.TestCase):
         # empty call
         with self.assertRaises( TypeError , msg='An empty init should have raised an Exception'):
             tsc = SonarClient()
-
-
-    @unittest.skip('Unauthorized is a pending test.')
-    @mock.activate
-    def test_no_permission(self):
-        '''Sonarqube denies permission.'''
-
-        HTTP_PERMISSION_DENIED = self.http_code_nr( 'Forbidden' )
-        HTTP_UNEXPECTED        = Unexpected_HTTPcode
-        def mock_url( query ):
-            mock.register_uri( mock.GET
-                             , self.API_URL + query
-                             , status=HTTP_PERMISSION_DENIED
-                             , body='''{            "etc":"etc"
-                                       , "_error_message":"You do not have permission to perform this action."
-                                       }
-                                    '''
-                             )
-            #print(query)
-
-        for u in [ 'deny' , 'projects/id' , 'projects/id/stats', 'projects/id/issues_stats' ]:
-            mock_url( u )
-        tc = self.TST_DTC
-
-        # AC1: basic_rq() raises no exception:
-        response = tc.basic_rq( 'deny' )
-        self.assertEqual( HTTP_PERMISSION_DENIED , response.status_code )
-
-        # AC2: everything else is paginated and rq() raises Unexpected_HTTPcode:
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.rq( 'deny' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj_stats( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj_issues_stats( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.get_lst_data_from_api( 'stats' , 'id'  )
-
-
-    @unittest.skip('Wrong credentials is a pending test.')
-    @mock.activate
-    def test_wrong_credentials(self):
-        '''Sonarqube rejects wrong token.'''
-
-        HTTP_UNAUTHORIZED = self.http_code_nr( 'Unauthorized' )
-        HTTP_UNEXPECTED   = Unexpected_HTTPcode
-        def mock_url( query ):
-            mock.register_uri( mock.GET
-                             , self.API_URL + query
-                             , status=HTTP_UNAUTHORIZED
-                             , body='''{            "etc":"etc"
-                                       , "_error_message": "Invalid token"
-                                       , "_error_type"   : "sonarqube.base.exceptions.NotAuthenticated"
-                                       }
-                                    '''
-                             )
-            #print(query)
-        for u in [ 'deny' , 'projects/id' , 'projects/id/stats', 'projects/id/issues_stats' ]:
-            mock_url( u )
-        tc = self.TST_DTC
-
-        # AC1: basic_rq() raises no exception:
-        response = tc.basic_rq( 'deny' )
-        self.assertEqual( HTTP_UNAUTHORIZED , response.status_code )
-
-        # AC2: everything else is paginated and rq() raises Unexpected_HTTPcode:
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.rq( 'deny' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj_stats( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj_issues_stats( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.proj( 'id' )
-        with self.assertRaises( HTTP_UNEXPECTED ):
-            bah = tc.get_lst_data_from_api( 'stats' , 'id' )
 
 
     @unittest.skip('Throttling is a pending test.')
@@ -679,53 +606,6 @@ class Utilities(unittest.TestCase):
 
 
         return PROJECTS , all_sizes 
-
-
-    @unittest.skip('This utility runner is disabled by default. Needs a real Sonarqube.')
-    def test_capture(self):
-        '''Runner for testing utilities.
-
-        Usage: adapt, enable by commenting the leading unittest.skip decorator and call
-        '''
-        self.capture_component_metrics_RS('api/measures/component?component=c{}&metricKeys=accessors,new_technical_debt', 'data/c01_measures_component_2.P1.PART.RS')
-
-
-    def capture_pj_list_RS(self, project_id, list_name, page=None):
-        '''Testing maintainance utility to capture http responses.'''
-
-        destination = 'data/{}.P{}.PART.RS'
-        url = '{}?project={}'
-        if page:
-            url += '&page={}'
-            url = url.format( list_name , project_id , page )
-            destination = destination.format( list_name , page )
-        else:
-            url = url.format( list_name , project_id )
-            destination = destination.format( list_name , "1" )
-
-        self.capture_basic_RS( url , destination )
-
-
-    def capture_component_metrics_RS(self, url , destination):
-        '''Testing maintainance utility to capture http responses.
-
-        Captures response headers and body in respective files.
-        :param destination: 'PART'-marked path to the file where to save.
-                            Will create 2 files: HEAD and BODY.
-        '''
-        config = Utilities.read_test_config( CFG_FILE )
-        sonar = SonarClient( ori=config['ori'], url=config['url']  )
-        response = json.loads(sonar.component_metrics( ori ))
-        if 200 == response.status_code:
-            with open( destination.replace('PART' , 'head') , 'w' ) as fh:
-                fh.write( str(response.headers) )
-            with open( destination.replace('PART' , 'body') , 'w' ) as fb:
-                fb.write( response.text )
-        else:
-            print( 'FAIL:'          )
-            print( response.headers )
-            print( response.text    )
-
 
 
 def read_file(filename, mode='r'):
